@@ -18,6 +18,7 @@ class SentimentResponse(BaseModel):
 
 @app.get("/")
 
+
 def root():
     return {"message": "Sentiment Analyzer API is running!"}
 
