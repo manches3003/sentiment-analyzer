@@ -3,7 +3,7 @@
 A production-ready AI app that analyzes text sentiment using HuggingFace transformers,
 built with FastAPI and shipped with a full CI/CD pipeline.
 
-![CI/CD](https://github.com/YOUR_USERNAME/sentiment-analyzer/actions/workflows/ci-cd.yml/badge.svg)
+![CI/CD](https://github.com/manches3003/sentiment-analyzer/actions/workflows/ci-cd.yml/badge.svg)
 ```
 
 Replace `YOUR_USERNAME` with `manches3003` — this shows a live green/red badge on your repo showing if the pipeline is passing.
