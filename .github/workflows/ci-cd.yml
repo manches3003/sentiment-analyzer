@@ -1,0 +1,148 @@
+name: CI/CD Pipeline
+
+# Trigger: run this pipeline on every push to main or any pull request
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+
+  # ─────────────────────────────────────────
+  # JOB 1: CI — Build & Test
+  # ─────────────────────────────────────────
+  ci:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Download your code onto the runner
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Step 4: Lint — catch syntax errors and bad code style
+      - name: Lint with flake8
+        run: |
+          pip install flake8
+          flake8 app/ --max-line-length=100
+
+      # Step 5: Run automated tests
+      - name: Run tests
+        run: pytest tests/ -v
+
+  # ─────────────────────────────────────────
+  # JOB 2: Docker Build
+  # ─────────────────────────────────────────
+  docker-build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: ci  # only runs if CI job passes
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t sentiment-analyzer:latest .
+
+      - name: Save image as artifact
+        run: docker save sentiment-analyzer:latest | gzip > sentiment-image.tar.gz
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: sentiment-image.tar.gz
+
+  # ─────────────────────────────────────────
+  # JOB 3: Staging — Smoke Test the Container
+  # ─────────────────────────────────────────
+  staging:
+    name: Staging Deploy & Smoke Test
+    runs-on: ubuntu-latest
+    needs: docker-build  # only runs if Docker build passes
+
+    steps:
+      - name: Download Docker image
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+
+      - name: Load Docker image
+        run: docker load < sentiment-image.tar.gz
+
+      # Start the container (staging environment)
+      - name: Start staging container
+        run: |
+          docker run -d \
+            --name staging-app \
+            -p 8000:8000 \
+            sentiment-analyzer:latest
+
+      # Wait for the app to be ready
+      - name: Wait for app to start
+        run: sleep 10
+
+      # Smoke test: hit the /health endpoint
+      - name: Smoke test - health check
+        run: |
+          curl --fail http://localhost:8000/health \
+            && echo "Health check PASSED"
+
+      # Smoke test: hit the /analyze endpoint with real input
+      - name: Smoke test - analyze endpoint
+        run: |
+          curl --fail -X POST http://localhost:8000/analyze \
+            -H "Content-Type: application/json" \
+            -d '{"text": "This product is absolutely amazing!"}' \
+            | grep "POSITIVE" && echo "Analyze endpoint PASSED"
+
+      - name: Stop staging container
+        run: docker stop staging-app
+
+  # ─────────────────────────────────────────
+  # JOB 4: Production — Push to Docker Hub
+  # (only on push to main, not on PRs)
+  # ─────────────────────────────────────────
+  production:
+    name: Production Deploy
+    runs-on: ubuntu-latest
+    needs: staging  # only runs if staging passes
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Download Docker image
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+
+      - name: Load Docker image
+        run: docker load < sentiment-image.tar.gz
+
+      # Login to Docker Hub using secrets stored in GitHub
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Tag and push the image to Docker Hub
+      - name: Push to Docker Hub
+        run: |
+          docker tag sentiment-analyzer:latest \
+            ${{ secrets.DOCKERHUB_USERNAME }}/sentiment-analyzer:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/sentiment-analyzer:latest
+
+      - name: Deployment complete
+        run: echo "Deployed to Docker Hub successfully!"
