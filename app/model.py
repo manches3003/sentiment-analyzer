@@ -1,10 +1,8 @@
 from transformers import pipeline
 
 
-
 # Load model once at startup (not on every request)
 _sentiment_pipeline = None
-
 
 
 def get_pipeline():
@@ -15,7 +13,6 @@ def get_pipeline():
             model="distilbert-base-uncased-finetuned-sst-2-english"
         )
     return _sentiment_pipeline
-
 
 
 def analyze(text: str) -> dict:
