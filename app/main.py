@@ -17,6 +17,7 @@ class SentimentResponse(BaseModel):
     score: float    # confidence 0.0 - 1.0
 
 @app.get("/")
+
 def root():
     return {"message": "Sentiment Analyzer API is running!"}
 
