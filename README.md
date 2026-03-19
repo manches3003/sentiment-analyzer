@@ -3,6 +3,15 @@
 A production-ready AI app that analyzes text sentiment using HuggingFace transformers,
 built with FastAPI and shipped with a full CI/CD pipeline.
 
+![CI/CD](https://github.com/YOUR_USERNAME/sentiment-analyzer/actions/workflows/ci-cd.yml/badge.svg)
+```
+
+Replace `YOUR_USERNAME` with `manches3003` — this shows a live green/red badge on your repo showing if the pipeline is passing.
+
+**2 — Add topics to your repo** so it shows up in searches. Go to your GitHub repo → click the gear icon next to "About" → add tags like:
+```
+fastapi  python  sentiment-analysis  docker  ci-cd  nlp  huggingface
+
 ## Live Demo
 Send any text → get back POSITIVE or NEGATIVE with a confidence score.
 
